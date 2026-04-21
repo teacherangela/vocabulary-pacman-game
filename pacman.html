@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Teacher Angela's Vocabman!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Luckiest+Guy&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --bg-main: #eef2f3; --accent: #4DB6AC; --accent-dark: #00897B;
+            --header-bg: #ffffff; --panel-bg: rgba(255, 255, 255, 0.9);  
+            --text-dark: #263238; --neon-green: #66bb6a; --neon-red: #ef5350; --shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+        
+        body { margin: 0; padding: 0; font-family: 'Fredoka', sans-serif; background: var(--bg-main); color: var(--text-dark); overflow: hidden; touch-action: none; }
+
+        /* FUN GAME FONT EFFECT */
+        .game-title {
+            font-family: 'Luckiest Guy', cursive;
+            font-size: 80px;
+            color: #FFEB3B;
+            text-align: center;
+            text-shadow: 
+                0 2px 0 #c7b300, 0 4px 0 #a39200, 0 6px 0 #857700, 
+                0 8px 0 #6b6000, 0 10px 20px rgba(0,0,0,.5);
+            letter-spacing: 4px;
+            animation: floatTitle 3s ease-in-out infinite, rainbowText 8s linear infinite;
+            margin-bottom: 40px;
+            -webkit-text-stroke: 2px #444;
+        }
+
+        @keyframes floatTitle {
+            0%, 100% { transform: translateY(0) rotate(-1deg); }
+            50% { transform: translateY(-20px) rotate(1deg); }
+        }
+
+        @keyframes rainbowText {
+            0% { color: #FFEB3B; }
+            25% { color: #FF5722; }
+            50% { color: #E91E63; }
+            75% { color: #00BCD4; }
+            100% { color: #FFEB3B; }
+        }
+
+        .persistent-controls { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; gap: 10px; pointer-events: none; }
+        .persistent-controls .ui-btn { pointer-events: auto; }
+
+        .screen { display: none; position: absolute; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
+        #intro-screen { display: flex; background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('background 1.gif') center/cover; }
+
+        #winner-screen { z-index: 5000; background: rgba(0,0,0,0.9); color: white; text-align: center; }
+        .win-card { background: white; color: var(--text-dark); padding: 40px; border-radius: 40px; box-shadow: 0 0 30px var(--neon-green); }
+
+        .left-ui-group { position: absolute; left: 20px; top: 10px; display: flex; gap: 10px; align-items: center; z-index: 2100; }
+
+        #game-header {
+            position: absolute; top: 0; left: 0; width: 100%; height: 220px;
+            display: flex; background: var(--header-bg); box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            z-index: 1000; padding-top: 65px; box-sizing: border-box;
+        }
+
+        .q-box { 
+            flex: 1; height: 150px; margin: 5px 15px; background: #f8f9fa; border: 3px solid #e0e0e0;
+            display: flex; align-items: center; padding: 0 20px; border-radius: 25px; box-sizing: border-box; 
+            position: relative; justify-content: center;
+        }
+        
+        .q-img-container { width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 15px; background: #eee; margin-right: 15px;}
+        .q-img-game { max-height: 100%; max-width: 100%; object-fit: contain; }
+        .q-text { font-size: 26px; font-weight: 600; text-align: center; flex: 1; }
+
+        #game-boundary { position: absolute; top: 220px; left: 0; width: 100%; height: calc(100% - 220px); display: flex; }
+        .game-lane { position: relative; height: 100%; flex: 1; border-right: 4px solid rgba(255,255,255,0.3); overflow: hidden; background-size: cover; }
+
+        .lane-info { position: absolute; top: 15px; right: 15px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 800; pointer-events: none;}
+        .lane-hp { display: flex; gap: 3px; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 15px; }
+        .hp-heart { width: 25px; height: 25px; }
+        .lane-timer { font-size: 20px; font-weight: bold; color: #fff; background: var(--neon-red); padding: 4px 12px; border-radius: 12px; }
+
+        .scoreboard { background: var(--panel-bg); border-radius: 60px; display: flex; padding: 8px 25px; gap: 15px; box-shadow: var(--shadow); }
+        .score-box { background: var(--text-dark); color: #fff; font-size: 32px; padding: 5px 25px; border-radius: 30px; font-weight: bold; }
+
+        .btn { padding: 12px 25px; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; transition: 0.1s; pointer-events: auto; }
+        .ui-btn { background: rgba(255,255,255,0.9); border: none; padding: 10px 15px; border-radius: 25px; cursor: pointer; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; }
+        .ui-btn-circle { width: 45px; height: 45px; border-radius: 50%; font-size: 20px; }
+
+        .pacman { position: absolute; width: 80px; height: 80px; background: url('PACMAN.gif') center/contain no-repeat; z-index: 500; cursor: grab; touch-action: none; pointer-events: auto; }
+        .ghost-target { position: absolute; width: 130px; display: flex; flex-direction: column; align-items: center; pointer-events: none; will-change: transform; }
+        .ghost-img { width: 70px; height: 70px; object-fit: contain; background: rgba(255,255,255,0.2); border-radius: 50%; }
+        .ans-tag { background: white; padding: 5px 10px; border-radius: 10px; margin-top: 5px; font-size: 14px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); text-align: center; }
+
+        #settings-modal { display: none; position: fixed; z-index: 10000; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); overflow-y: auto; padding: 20px; }
+        .modal-content { background: #fff; margin: auto; padding: 30px; border-radius: 30px; max-width: 900px; color: var(--text-dark); }
+        .q-card { background: #f1f3f4; padding: 15px; margin-bottom: 15px; border-radius: 15px; position: relative; border-left: 5px solid var(--accent); }
+        .thumb-preview { width: 50px; height: 50px; object-fit: cover; border-radius: 5px; background: #ddd; }
+
+        .next-btn-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.7); display: none; align-items: center; justify-content: center; z-index: 950; pointer-events: auto; }
+        .team-end-overlay { display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.85); z-index: 900; align-items: center; justify-content: center; flex-direction: column; color: white; font-weight: bold; }
+        
+        @keyframes vibrate { 0%, 100% {transform:translate(0,0);} 20%{transform:translate(-3px,3px);} 40%{transform:translate(3px,-3px);} 60%{transform:translate(-3px,-3px);} 80%{transform:translate(3px,3px);} }
+        .vibrate { animation: vibrate 0.15s linear infinite; }
+    </style>
+</head>
+<body>
+
+    <audio id="bg-music" loop src="background.mp3"></audio>
+    <audio id="sfx-chime" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
+    <audio id="sfx-lose-life" src="https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3"></audio>
+    <audio id="sfx-gameover" src="https://assets.mixkit.co/active_storage/sfx/2016/2016-preview.mp3"></audio>
+    <audio id="sfx-win" src="https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3"></audio>
+
+    <div class="persistent-controls">
+        <button class="ui-btn ui-btn-circle music-toggle-btn" onclick="toggleMusic()" style="background: var(--neon-red); color: white;">♪</button>
+        <button class="ui-btn ui-btn-circle" onclick="toggleFullscreen()">⛶</button>
+    </div>
+
+    <div id="intro-screen" class="screen">
+        <div class="game-title">Teacher Angela's<br>Vocabman</div>
+        <div style="display: flex; gap: 20px;">
+            <button class="btn" style="background:var(--neon-green); color:white; font-size:32px; padding: 25px 80px; border-radius: 60px;" onclick="quickStart()">PLAY ▶</button>
+            <button class="btn" style="background:rgba(255,255,255,0.2); color:white; font-size:24px; padding: 15px 40px; border-radius: 50px; border: 2px solid white;" onclick="openSettings()">SETTINGS ⚙</button>
+        </div>
+    </div>
+
+    <div id="winner-screen" class="screen">
+        <div class="win-card">
+            <h1 id="win-title" style="font-size: 48px; margin-bottom: 10px;">WINNER!</h1>
+            <p id="win-details" style="font-size: 24px; margin-bottom: 30px;"></p>
+            <button class="btn" style="background: var(--neon-green); color: white; padding: 15px 40px; font-size: 20px;" onclick="softReset()">PLAY AGAIN ↺</button>
+        </div>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <div class="left-ui-group"><button class="ui-btn" style="background: var(--neon-red); color: white;" onclick="softReset()">⬅ BACK</button></div>
+        <div style="position: absolute; top: 10px; width: 100%; display: flex; justify-content: center; z-index: 2000;">
+            <div class="scoreboard">
+                <div id="score-1" class="score-box">00</div>
+                <div id="score-2" class="score-box">00</div>
+            </div>
+        </div>
+        <div id="game-header">
+            <div id="box-team-1" class="q-box"><div id="q-img-1" class="q-img-container"></div><div id="q-text-1" class="q-text"></div></div>
+            <div id="box-team-2" class="q-box"><div id="q-img-2" class="q-img-container"></div><div id="q-text-2" class="q-text"></div></div>
+        </div>
+        <div id="game-boundary">
+            <div id="lane-1" class="game-lane" style="background-image: url('background 2.gif');">
+                <div class="lane-info"><div id="timer-1" class="lane-timer">60s</div><div id="hp-hearts-1" class="lane-hp"></div></div>
+                <div id="next-overlay-1" class="next-btn-overlay"><button class="btn" style="background:var(--neon-green); color:white; font-size: 20px;" onclick="handleNext(1)">NEXT QUESTION ➜</button></div>
+                <div id="overlay-1" class="team-end-overlay">
+                    <img id="end-img-1" src="GAME OVER.gif" style="width: 250px;">
+                    <h2 id="end-text-1"></h2>
+                </div>
+            </div>
+            <div id="lane-2" class="game-lane" style="background-image: url('background 5.gif');">
+                <div class="lane-info"><div id="timer-2" class="lane-timer">60s</div><div id="hp-hearts-2" class="lane-hp"></div></div>
+                <div id="next-overlay-2" class="next-btn-overlay"><button class="btn" style="background:var(--neon-green); color:white; font-size: 20px;" onclick="handleNext(2)">NEXT QUESTION ➜</button></div>
+                <div id="overlay-2" class="team-end-overlay">
+                    <img id="end-img-2" src="GAME OVER.gif" style="width: 250px;">
+                    <h2 id="end-text-2"></h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings-modal">
+        <div class="modal-content">
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>Game Settings</h2>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn" style="background:var(--neon-red); color:white;" onclick="clearAllQuestions()">🗑 CLEAR ALL</button>
+                    <button class="btn" style="background:#455a64; color:white;" onclick="exportData()">💾 EXPORT</button>
+                    <button class="btn" style="background:#455a64; color:white;" onclick="document.getElementById('import-file').click()">📁 IMPORT</button>
+                    <button class="btn" id="add-q-btn" style="background:var(--neon-green); color:white;" onclick="addNewQuestion()">+ ADD QUESTION</button>
+                    <input type="file" id="import-file" style="display:none" accept=".json" onchange="importData(this)">
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:15px; margin-bottom: 20px; background: #f8f9fa; padding: 20px; border-radius: 15px;">
+                <label>Lives: <input type="number" id="life-val" value="3" style="width:50px;"></label>
+                <label>Time: <input type="number" id="time-val" value="60" style="width:60px;"></label>
+                <label>Mode: <select id="mode-sel"><option value="1">1 Player</option><option value="2" selected>2 Players</option></select></label>
+                <label>Sync: <button id="sync-btn" onclick="toggleSync()" style="padding: 5px 10px;">ON</button></label>
+            </div>
+            <p style="font-size: 12px; color: #666;">* Click a text box and press Ctrl+V to paste an image.</p>
+            <div id="q-list"></div>
+            <div style="display: flex; gap: 10px; margin-top: 20px; position: sticky; bottom: 0; background: white; padding: 10px 0; border-top: 2px solid #eee; z-index: 5;">
+                <button class="btn" style="flex: 1; background: #4DB6AC; color: white; font-size: 18px;" onclick="saveQuestionsOnly()">💾 SAVE DATA</button>
+                <button class="btn" style="flex: 1; background: var(--neon-green); color: white; font-size: 18px;" onclick="saveAndStart()">START GAME ▶</button>
+                <button class="btn" style="flex: 0.3; background: #666; color: white;" onclick="closeSettings()">CLOSE</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const targetGifs = ['target1.gif', 'target2.gif', 'target 3.gif', 'target4.gif'];
+        let rawQuestions = [];
+        let db, teamData = {}, syncOn = true, isMusicOn = false, gameStarted = false, timerInterval = null, lastFocusedInput = null;
+        let ghosts = []; 
+        const music = document.getElementById('bg-music');
+
+        // IndexedDB Initialization
+        const request = indexedDB.open("VocabmanDB", 1);
+        request.onupgradeneeded = e => { db = e.target.result; db.createObjectStore("gameData", { keyPath: "id" }); };
+        request.onsuccess = e => { db = e.target.result; loadDB(); };
+
+        function loadDB() {
+            const tx = db.transaction("gameData", "readonly");
+            const get = tx.objectStore("gameData").get("current");
+            get.onsuccess = () => { 
+                if(get.result && Array.isArray(get.result.data)) {
+                    rawQuestions = get.result.data;
+                } else {
+                    rawQuestions = [{
+                        text: "Welcome! Add your first question.", img: "", opts: [{t: "Correct", c: true, img: ""}, {t: "Wrong", c: false, img: ""}, {t: "Wrong", c: false, img: ""}, {t: "Wrong", c: false, img: ""}]
+                    }];
+                }
+            };
+        }
+
+        function toggleMusic() { 
+            isMusicOn = !isMusicOn; isMusicOn ? music.play() : music.pause();
+            const btn = document.querySelector('.music-toggle-btn');
+            btn.style.background = isMusicOn ? "var(--neon-green)" : "var(--neon-red)";
+        }
+
+        function toggleFullscreen() { 
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(e => console.log(e));
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        // Logic for Back button that preserves Fullscreen
+        function softReset() {
+            gameStarted = false;
+            if(timerInterval) clearInterval(timerInterval);
+            ghosts = [];
+            
+            // Clear DOM objects
+            document.querySelectorAll('.pacman, .ghost-target').forEach(el => el.remove());
+            
+            // Hide screens
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('winner-screen').style.display = 'none';
+            document.getElementById('settings-modal').style.display = 'none';
+            
+            // Show start screen
+            document.getElementById('intro-screen').style.display = 'flex';
+        }
+
+        function toggleSync() { syncOn = !syncOn; document.getElementById('sync-btn').innerText = syncOn ? "ON" : "OFF"; }
+
+        function openSettings() { renderSettingsList(); document.getElementById('settings-modal').style.display = 'block'; }
+
+        function renderSettingsList() {
+            const list = document.getElementById('q-list'); list.innerHTML = '';
+            rawQuestions.forEach((q, i) => {
+                const card = document.createElement('div'); card.className = 'q-card';
+                card.innerHTML = `
+                <button style="position:absolute; top:10px; right:10px; background:red; color:white; border:none; border-radius:50%; width:25px; height:25px;" onclick="deleteQuestion(${i})">✕</button>
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+                    <img id="prev-q-${i}" class="thumb-preview" src="${q.img || ''}" style="${q.img?'':'display:none'}">
+                    <input type="text" value="${q.text}" onfocus="lastFocusedInput={type:'q',i:${i}}" oninput="rawQuestions[${i}].text=this.value" style="flex:1; padding:8px;" placeholder="Question Text">
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">${q.opts.map((o, oi) => `
+                    <div style="display:flex; align-items:center; background:#fff; padding:5px; border-radius:8px; border:1px solid #ddd;">
+                        <img id="prev-o-${i}-${oi}" class="thumb-preview" src="${o.img || ''}" style="width:30px; height:30px; ${o.img?'':'display:none'}">
+                        <input type="text" value="${o.t}" onfocus="lastFocusedInput={type:'o',i:${i},oi:${oi}}" oninput="rawQuestions[${i}].opts[${oi}].t=this.value" style="flex:1; border:none; padding:5px;">
+                        <input type="radio" name="correct-${i}" ${o.c?'checked':''} onclick="rawQuestions[${i}].opts.forEach((opt, idx)=>opt.c=(idx===${oi}))">
+                    </div>`).join('')}</div>`;
+                list.appendChild(card);
+            });
+        }
+
+        window.addEventListener('paste', e => {
+            if(!lastFocusedInput) return;
+            const item = Array.from(e.clipboardData.items).find(x => x.type.indexOf('image') !== -1);
+            if(!item) return;
+            const reader = new FileReader();
+            reader.onload = event => {
+                const base64 = event.target.result;
+                if(lastFocusedInput.type === 'q') {
+                    rawQuestions[lastFocusedInput.i].img = base64;
+                    const prev = document.getElementById(`prev-q-${lastFocusedInput.i}`);
+                    if(prev) { prev.src = base64; prev.style.display = 'block'; }
+                } else {
+                    rawQuestions[lastFocusedInput.i].opts[lastFocusedInput.oi].img = base64;
+                    const prev = document.getElementById(`prev-o-${lastFocusedInput.i}-${lastFocusedInput.oi}`);
+                    if(prev) { prev.src = base64; prev.style.display = 'block'; }
+                }
+            };
+            reader.readAsDataURL(item.getAsFile());
+        });
+
+        function clearAllQuestions() {
+            if(confirm("Teacher Angela: Delete ALL questions?")) {
+                rawQuestions = [];
+                renderSettingsList();
+                saveQuestionsOnly(true);
+            }
+        }
+
+        function saveQuestionsOnly(silent = false) { 
+            db.transaction("gameData", "readwrite").objectStore("gameData").put({ id: "current", data: rawQuestions }); 
+            if(!silent) alert("Data saved!"); 
+        }
+
+        function exportData() { 
+            const dataStr = JSON.stringify(rawQuestions, null, 2);
+            const blob = new Blob([dataStr], {type: "application/json"}); 
+            const a = document.createElement("a"); 
+            a.href = URL.createObjectURL(blob); a.download = "Vocabman_Bank.json"; a.click(); 
+        }
+
+        function importData(input) { 
+            if (!input.files || !input.files[0]) return;
+            const reader = new FileReader(); 
+            reader.onload = e => { 
+                try {
+                    rawQuestions = JSON.parse(e.target.result);
+                    renderSettingsList();
+                    saveQuestionsOnly(true);
+                    alert("Import Successful!");
+                } catch(err) { alert("Invalid file."); }
+            }; 
+            reader.readAsText(input.files[0]); 
+        }
+
+        function quickStart() { if(rawQuestions.length === 0) openSettings(); else saveAndStart(); }
+
+        function saveAndStart() {
+            const valid = rawQuestions.filter(q => (q.text && q.text.trim() !== "") || q.img !== "");
+            if(valid.length === 0) return alert("Add a question first!");
+            saveQuestionsOnly(true);
+
+            gameStarted = true; ghosts = [];
+            const mode = parseInt(document.getElementById('mode-sel').value);
+            const startTime = parseInt(document.getElementById('time-val').value);
+
+            [1, 2].forEach(id => {
+                let qs = JSON.parse(JSON.stringify(valid));
+                if(!syncOn) qs.sort(() => Math.random() - 0.5);
+                teamData[id] = { 
+                    questions: qs, currentIdx: 0, 
+                    lives: parseInt(document.getElementById('life-val').value), 
+                    time: startTime, score: 0, active: true, 
+                    isStunned: false, waitingForNext: false, finished: false 
+                };
+                updateHearts(id);
+                document.getElementById(`timer-${id}`).innerText = startTime + "s";
+                document.getElementById(`overlay-${id}`).style.display = 'none'; 
+                document.getElementById(`next-overlay-${id}`).style.display = 'none';
+                document.getElementById(`score-${id}`).innerText = "00";
+            });
+
+            document.getElementById('lane-2').style.display = mode === 1 ? "none" : "block";
+            document.getElementById('box-team-2').style.display = mode === 1 ? "none" : "flex";
+            document.getElementById('settings-modal').style.display = 'none';
+            document.getElementById('intro-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'flex';
+            document.getElementById('winner-screen').style.display = 'none';
+            
+            spawnPlayer(1); if(mode === 2) spawnPlayer(2);
+            loadQ(1); if(mode === 2) loadQ(2);
+            startTimers();
+            requestAnimationFrame(animateGhosts);
+        }
+
+        function animateGhosts() {
+            if(!gameStarted) return;
+            ghosts.forEach(g => {
+                if(!g.element.parentElement) return; 
+                const laneRect = g.element.parentElement.getBoundingClientRect();
+                g.x += g.vx; g.y += g.vy;
+                if (g.x <= 0 || g.x >= laneRect.width - 130) { g.vx *= -1; g.x = Math.max(0, Math.min(g.x, laneRect.width - 130)); }
+                if (g.y <= 0 || g.y >= laneRect.height - 130) { g.vy *= -1; g.y = Math.max(0, Math.min(g.y, laneRect.height - 130)); }
+                g.element.style.transform = `translate(${g.x}px, ${g.y}px)`;
+            });
+            requestAnimationFrame(animateGhosts);
+        }
+
+        function loadQ(id) {
+            const data = teamData[id]; const lane = document.getElementById(`lane-${id}`);
+            lane.querySelectorAll('.ghost-target').forEach(g => g.remove());
+            ghosts = ghosts.filter(g => g.team !== id); 
+
+            if(data.currentIdx >= data.questions.length) { endTeam(id, true); return; }
+            
+            const q = data.questions[data.currentIdx];
+            const imgCont = document.getElementById(`q-img-${id}`);
+            imgCont.innerHTML = q.img ? `<img src="${q.img}" class="q-img-game">` : '';
+            imgCont.style.display = q.img ? 'flex' : 'none';
+            document.getElementById(`q-text-${id}`).innerText = q.text || "";
+
+            const laneRect = lane.getBoundingClientRect();
+            q.opts.forEach((o, i) => {
+                const gEl = document.createElement('div'); gEl.className = 'ghost-target';
+                const content = o.img ? `<img src="${o.img}" class="ghost-img">` : `<img src="${targetGifs[i]}" class="ghost-img">`;
+                gEl.innerHTML = `${content}<span class="ans-tag">${o.t}</span>`;
+                gEl.dataset.c = o.c; lane.appendChild(gEl);
+                const startX = Math.random() * (laneRect.width - 130);
+                const startY = Math.random() * (laneRect.height - 150);
+                ghosts.push({ element: gEl, team: id, x: startX, y: startY, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4 });
+            });
+        }
+
+        function setupMultiTouch(el, id) {
+            const lane = el.parentElement;
+            const handleMove = (clientX, clientY) => {
+                if(!teamData[id].active || teamData[id].isStunned || teamData[id].waitingForNext) return;
+                const r = lane.getBoundingClientRect();
+                let x = clientX - r.left - 40; let y = clientY - r.top - 40;
+                x = Math.max(0, Math.min(x, r.width - 80)); y = Math.max(0, Math.min(y, r.height - 80));
+                el.style.left = x + 'px'; el.style.top = y + 'px';
+                checkCollision(el, id);
+            };
+            lane.addEventListener('touchstart', e => { Array.from(e.changedTouches).forEach(t => { if(document.elementFromPoint(t.clientX, t.clientY) === el) el._touchId = t.identifier; }); }, {passive: false});
+            lane.addEventListener('touchmove', e => { e.preventDefault(); Array.from(e.changedTouches).forEach(t => { if(t.identifier === el._touchId) handleMove(t.clientX, t.clientY); }); }, {passive: false});
+            let isDown = false; el.addEventListener('mousedown', () => isDown = true);
+            window.addEventListener('mousemove', e => { if(isDown) handleMove(e.clientX, e.clientY); });
+            window.addEventListener('mouseup', () => isDown = false);
+        }
+
+        function checkCollision(p, id) {
+            const pR = p.getBoundingClientRect();
+            ghosts.filter(g => g.team === id).forEach(g => {
+                const gR = g.element.getBoundingClientRect();
+                if(!(pR.right < gR.left || pR.left > gR.right || pR.bottom < gR.top || pR.top > gR.bottom)) {
+                    if(g.element.dataset.c === "true") {
+                        document.getElementById('sfx-chime').play();
+                        teamData[id].waitingForNext = true;
+                        document.getElementById(`next-overlay-${id}`).style.display = 'flex';
+                    } else {
+                        document.getElementById('sfx-lose-life').play();
+                        teamData[id].lives--; updateHearts(id);
+                        g.element.remove(); 
+                        ghosts = ghosts.filter(ghost => ghost !== g);
+                        teamData[id].isStunned = true; p.classList.add('vibrate');
+                        if(teamData[id].lives <= 0) endTeam(id, false); 
+                        else setTimeout(() => { teamData[id].isStunned = false; p.classList.remove('vibrate'); }, 1200);
+                    }
+                }
+            });
+        }
+
+        function spawnPlayer(id) {
+            const lane = document.getElementById(`lane-${id}`);
+            lane.querySelectorAll('.pacman').forEach(p => p.remove());
+            const p = document.createElement('div'); p.className = 'pacman';
+            p.style.left = '45%'; p.style.top = '70%';
+            if(id === 2) p.style.filter = 'hue-rotate(160deg)';
+            lane.appendChild(p);
+            setupMultiTouch(p, id);
+        }
+
+        function handleNext(id) {
+            teamData[id].score++;
+            document.getElementById(`score-${id}`).innerText = teamData[id].score.toString().padStart(2, '0');
+            teamData[id].currentIdx++; teamData[id].waitingForNext = false;
+            document.getElementById(`next-overlay-${id}`).style.display = 'none';
+            spawnPlayer(id); loadQ(id);
+        }
+
+        function startTimers() {
+            if(timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                [1, 2].forEach(id => {
+                    if(teamData[id]?.active && !teamData[id]?.waitingForNext && !teamData[id]?.finished) {
+                        teamData[id].time--; document.getElementById(`timer-${id}`).innerText = teamData[id].time + "s";
+                        if(teamData[id].time <= 0) endTeam(id, false);
+                    }
+                });
+            }, 1000);
+        }
+
+        function endTeam(id, completed) { 
+            teamData[id].active = false; teamData[id].finished = true;
+            const overlay = document.getElementById(`overlay-${id}`);
+            const img = document.getElementById(`end-img-${id}`);
+            const txt = document.getElementById(`end-text-${id}`);
+            if(completed) {
+                document.getElementById('sfx-win').play();
+                img.style.display = 'block';
+                img.src = "welldone.gif";
+                txt.innerText = "";
+            } else {
+                document.getElementById('sfx-gameover').play();
+                img.style.display = 'block';
+                img.src = "GAME OVER.gif";
+                txt.innerText = "GAME OVER";
+            }
+            overlay.style.display = 'flex';
+            checkGlobalGameOver();
+        }
+
+        function checkGlobalGameOver() {
+            const mode = parseInt(document.getElementById('mode-sel').value);
+            const bothDone = mode === 1 ? teamData[1].finished : (teamData[1].finished && teamData[2].finished);
+            if(bothDone) { clearInterval(timerInterval); setTimeout(declareWinner, 2000); }
+        }
+
+        function declareWinner() {
+            const mode = parseInt(document.getElementById('mode-sel').value);
+            const title = document.getElementById('win-title');
+            const details = document.getElementById('win-details');
+            if(mode === 1) {
+                title.innerText = teamData[1].score > 0 ? "WELL DONE!" : "GAME OVER";
+                details.innerText = `Final Score: ${teamData[1].score}`;
+            } else {
+                let winMsg = "";
+                if(teamData[1].score > teamData[2].score) winMsg = "PLAYER 1 WINS!";
+                else if(teamData[2].score > teamData[1].score) winMsg = "PLAYER 2 WINS!";
+                else {
+                    if(teamData[1].time > teamData[2].time) winMsg = "TIE! PLAYER 1 wins by speed!";
+                    else if(teamData[2].time > teamData[1].time) winMsg = "TIE! PLAYER 2 wins by speed!";
+                    else winMsg = "IT'S A PERFECT TIE!";
+                }
+                title.innerText = winMsg;
+                details.innerHTML = `P1 Score: ${teamData[1].score} | P2 Score: ${teamData[2].score}`;
+            }
+            document.getElementById('winner-screen').style.display = 'flex';
+        }
+
+        function addNewQuestion() { rawQuestions.push({text:"", img:"", opts:[{t:"", c:true, img:""},{t:"", c:false, img:""},{t:"", c:false, img:""},{t:"", c:false, img:""}]}); renderSettingsList(); }
+        function deleteQuestion(i) { rawQuestions.splice(i, 1); renderSettingsList(); }
+        function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
+        function updateHearts(id) { const c = document.getElementById(`hp-hearts-${id}`); c.innerHTML = ''; for(let i=0; i<teamData[id].lives; i++) c.innerHTML += `<img src="life.gif" class="hp-heart">`; }
+    </script>
+</body>
+</html>
